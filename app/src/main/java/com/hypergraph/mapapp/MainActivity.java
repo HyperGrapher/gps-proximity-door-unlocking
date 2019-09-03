@@ -1,143 +1,111 @@
 package com.hypergraph.mapapp;
 
+import android.app.ActivityManager;
+import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
-import android.view.View;
-import android.widget.ProgressBar;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentActivity;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.hypergraph.mapapp.utilities.AppDB;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+import static com.hypergraph.mapapp.utilities.Constants.PREF_IS_USER_IN_RANGE;
+
+public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private static final String TAG = "MainActivity";
-    private Handler mHandler = new Handler();
-    private Runnable mRunnable;
-    private static final int LOCATION_UPDATE_INTERVAL = 3000;
 
-    private MapView mMapView;
-    private ProgressBar progressBar;
-    private String MAPVIEW_BUNDLE_KEY;
+    private GoogleMap mMap;
+    private AppDB appDB;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_mitch);
 
-        mMapView = findViewById(R.id.map);
-        progressBar = findViewById(R.id.progressBar);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.gmap);
+        mapFragment.getMapAsync(this);
 
-        MAPVIEW_BUNDLE_KEY = getString(R.string.google_maps_key);
+        appDB = new AppDB(getApplicationContext());
 
-        FusedLocationProviderClient locationServices = LocationServices.getFusedLocationProviderClient(this);
 
-        // *** IMPORTANT ***
-        // MapView requires that the Bundle you pass contain _ONLY_ MapView SDK
-        // objects or sub-Bundles.
-        Bundle mapViewBundle = null;
-        if (savedInstanceState != null) {
-            mapViewBundle = savedInstanceState.getBundle(MAPVIEW_BUNDLE_KEY);
+        startLocationService();
+    }
+
+    private void startLocationService() {
+        if (!isLocationServiceRunning()) {
+            Intent serviceIntent = new Intent(this, LocationService.class);
+            // this.startService(serviceIntent);
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+                MainActivity.this.startForegroundService(serviceIntent);
+                Log.i(TAG, "startLocationService: STARTED O");
+
+            } else {
+
+                startService(serviceIntent);
+                Log.i(TAG, "startLocationService: STARTED < O");
+
+            }
         }
-        mMapView = findViewById(R.id.map);
-        mMapView.onCreate(mapViewBundle);
-
-        mMapView.getMapAsync(this);
-
-        startUserLocationsRunnable();
     }
 
+    private boolean isLocationServiceRunning() {
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
 
-    private void startUserLocationsRunnable() {
-        Log.d(TAG, "startUserLocationsRunnable: starting runnable for retrieving updated locations.");
-        mHandler.postDelayed(mRunnable = () -> {
-            retrieveUserLocations();
-            mHandler.postDelayed(mRunnable, LOCATION_UPDATE_INTERVAL);
-        }, LOCATION_UPDATE_INTERVAL);
-    }
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
 
-    private void stopLocationUpdates() {
-        mHandler.removeCallbacks(mRunnable);
-    }
+            if (LocationService.TAG.equals(service.service.getClassName())) {
 
-    private void retrieveUserLocations() {
-        Log.d(TAG, "retrieveUserLocation");
-
-    }
-
-
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-
-        Bundle mapViewBundle = outState.getBundle(MAPVIEW_BUNDLE_KEY);
-        if (mapViewBundle == null) {
-            mapViewBundle = new Bundle();
-            outState.putBundle(MAPVIEW_BUNDLE_KEY, mapViewBundle);
+                Log.d(TAG, "isLocationServiceRunning: location service is already running.");
+                return true;
+            }
         }
 
-        mMapView.onSaveInstanceState(mapViewBundle);
+        Log.d(TAG, "isLocationServiceRunning: location service is not running.");
+
+        return false;
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        mMapView.onResume();
-        startUserLocationsRunnable();
-
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mMapView.onStart();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mMapView.onStop();
-        stopLocationUpdates();
-    }
 
     @Override
     public void onMapReady(GoogleMap map) {
-        LatLng ny = new LatLng(37.038772, 35.308586);
-        map.addMarker(new MarkerOptions().position(ny).title("Marker"));
+//        LatLng ny = new LatLng(37.038772, 35.308586);
+        LatLng ny = new LatLng(37.039142, 35.308955);
+        map.addMarker(new MarkerOptions().position(ny).title("Merkez"));
         map.setMinZoomPreference(18.0f);
         map.moveCamera(CameraUpdateFactory.newLatLng(ny));
-        progressBar.setVisibility(View.GONE);
+
+        Circle circle = map.addCircle(new CircleOptions()
+//                .center(new LatLng(37.038772, 35.308586))
+                        .center(new LatLng(37.039142, 35.308955))
+                        .radius(50)
+                        .strokeColor(Color.RED)
+        );
+
+        Log.i(TAG, "onMapReady: Circle: " + circle.getRadius());
 
 
     }
+
 
     @Override
-    protected void onPause() {
-        mMapView.onPause();
-        stopLocationUpdates();
-        super.onPause();
+    public void onBackPressed() {
+
+        if (!appDB.getBoolean(PREF_IS_USER_IN_RANGE)) super.onBackPressed();
     }
 
-    @Override
-    protected void onDestroy() {
-        mMapView.onDestroy();
-        stopLocationUpdates();
-        super.onDestroy();
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        stopLocationUpdates();
-        mMapView.onLowMemory();
-    }
 
 }

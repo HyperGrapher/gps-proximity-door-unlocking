@@ -1,4 +1,4 @@
-package com.hypergraph.mapapp.mitch;
+package com.hypergraph.mapapp;
 
 import android.Manifest;
 import android.app.Notification;
@@ -26,6 +26,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.hypergraph.mapapp.utilities.AppDB;
 
+import static com.hypergraph.mapapp.utilities.Constants.NOTIFICATION_CHANNEL_NAME;
 import static com.hypergraph.mapapp.utilities.Constants.PREF_IS_USER_IN_RANGE;
 
 
@@ -58,7 +59,7 @@ public class LocationService extends Service {
         if (Build.VERSION.SDK_INT >= 26) {
             String CHANNEL_ID = "my_channel_01";
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                    "Lokasyon güncellemeleri",
+                    NOTIFICATION_CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_DEFAULT);
 
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
@@ -115,19 +116,18 @@ public class LocationService extends Service {
                             // TODO: Get radius from the api
                             if (distance[0] > 50) {
 
-                                Toast.makeText(getBaseContext(), "You are not in a bunker", Toast.LENGTH_LONG).show();
+                                Toast.makeText(getBaseContext(), "OUTSIDE", Toast.LENGTH_SHORT).show();
                                 appDB.putBoolean(PREF_IS_USER_IN_RANGE, false);
 
                             } else {
 
 
                                 appDB.putBoolean(PREF_IS_USER_IN_RANGE, true);
-
-                                Toast.makeText(getBaseContext(), "You are inside a bunker", Toast.LENGTH_LONG).show();
+                                Toast.makeText(getBaseContext(), "INSIDE", Toast.LENGTH_SHORT).show();
 
                                 Log.i(TAG, "onLocationResult: INSIDE RADIUS");
 
-                                Intent in = new Intent(LocationService.this, MitchActivity.class);
+                                Intent in = new Intent(LocationService.this, MainActivity.class);
                                 in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 startActivity(in);
 

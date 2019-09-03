@@ -11,8 +11,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
 
     <application
         android:allowBackup="false"
@@ -22,24 +20,18 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".mitch.MitchActivity">
+
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".LocationActivity">
-
-        </activity>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
-
-        <activity
-            android:name=".MainActivity"
-            android:screenOrientation="portrait" />
 
 
         <meta-data
@@ -48,7 +40,7 @@
 
 
         <service
-            android:name=".mitch.LocationService"
+            android:name=".LocationService"
             android:stopWithTask="false" />
 
 
