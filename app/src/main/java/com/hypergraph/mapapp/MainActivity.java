@@ -1,11 +1,14 @@
 package com.hypergraph.mapapp;
 
+import android.Manifest;
 import android.app.ActivityManager;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -26,6 +29,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
     private AppDB appDB;
+    private boolean hasLocationPermission;
+    public final static int TAG_PERMISSION_CODE = 1;
+
 
 
     @Override
@@ -39,6 +45,16 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         appDB = new AppDB(getApplicationContext());
 
+        hasLocationPermission = ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+
+        if (!hasLocationPermission) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    TAG_PERMISSION_CODE);
+
+        }
 
         startLocationService();
     }
@@ -95,7 +111,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         .strokeColor(Color.RED)
         );
 
-        Log.i(TAG, "onMapReady: Circle: " + circle.getRadius());
+        Log.i(TAG, "onMapReady: Circle Distance: " + circle.getRadius());
 
 
     }
