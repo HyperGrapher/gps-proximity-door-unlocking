@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -21,7 +22,24 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.hypergraph.mapapp.utilities.AppDB;
 
+import org.ksoap2.SoapEnvelope;
+import org.ksoap2.serialization.SoapObject;
+import org.ksoap2.serialization.SoapSerializationEnvelope;
+import org.ksoap2.transport.HttpsTransportSE;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
+
+import static com.hypergraph.mapapp.utilities.Constants.GET_USER_METHOD_NAME;
 import static com.hypergraph.mapapp.utilities.Constants.PREF_IS_USER_IN_RANGE;
+import static com.hypergraph.mapapp.utilities.Constants.SERVICE_BASE_URL;
+import static com.hypergraph.mapapp.utilities.Constants.SERVICE_GET_USER_SOAP_ACTION;
+import static com.hypergraph.mapapp.utilities.Constants.SERVICE_NAMESPACE;
+import static com.hypergraph.mapapp.utilities.Constants.SERVICE_PASSWORD;
+import static com.hypergraph.mapapp.utilities.Constants.SERVICE_PASSWORD_KEY;
+import static com.hypergraph.mapapp.utilities.Constants.SERVICE_PHONE_KEY;
+import static com.hypergraph.mapapp.utilities.Constants.TEST_PHONE_NO;
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -31,6 +49,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private AppDB appDB;
     private boolean hasLocationPermission;
     public final static int TAG_PERMISSION_CODE = 1;
+    private String response;
+
 
 
 
@@ -57,6 +77,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         startLocationService();
+
+//        new GetUserCall().execute();
+
+
     }
 
     private void startLocationService() {
@@ -114,6 +138,56 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Log.i(TAG, "onMapReady: Circle Distance: " + circle.getRadius());
 
 
+    }
+
+    public class GetUserCall extends AsyncTask<String, Object, String> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected String doInBackground(String... strings) {
+            SoapObject req = new SoapObject(SERVICE_NAMESPACE, GET_USER_METHOD_NAME);
+            req.addProperty(SERVICE_PASSWORD_KEY, SERVICE_PASSWORD);
+            req.addProperty(SERVICE_PHONE_KEY, TEST_PHONE_NO);
+
+            SoapSerializationEnvelope envelope = new SoapSerializationEnvelope(SoapEnvelope.VER11);
+            envelope.dotNet = true;
+            envelope.setOutputSoapObject(req);
+            HttpsTransportSE transportSE = new HttpsTransportSE(SERVICE_BASE_URL, 808, "Service1.svc", 30000);
+
+            try {
+
+                Log.i(TAG, "doInBackground: RESPONSE RUN");
+                transportSE.call(SERVICE_GET_USER_SOAP_ACTION, envelope);
+                response = (String) envelope.getResponse();
+
+
+            } catch (SocketTimeoutException e) {
+                Log.e(TAG, "timeout", e);
+                e.printStackTrace();
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            } catch (IOException f) {
+                f.printStackTrace();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+
+            return response;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+
+            if (response != null) Log.i(TAG, "onPostExecute: RESPONSE: " + response);
+            else Log.i(TAG, "onPostExecute: !! NULL Response!!");
+        }
     }
 
 
