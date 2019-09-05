@@ -2,11 +2,14 @@ package com.hypergraph.mapapp;
 
 import android.Manifest;
 import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
@@ -20,19 +23,19 @@ import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.button.MaterialButton;
 import com.hypergraph.mapapp.utilities.AppDB;
 
 import org.ksoap2.SoapEnvelope;
 import org.ksoap2.serialization.SoapObject;
+import org.ksoap2.serialization.SoapPrimitive;
 import org.ksoap2.serialization.SoapSerializationEnvelope;
 import org.ksoap2.transport.HttpsTransportSE;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.SocketTimeoutException;
-
+import static android.Manifest.permission.READ_PHONE_STATE;
 import static com.hypergraph.mapapp.utilities.Constants.GET_USER_METHOD_NAME;
 import static com.hypergraph.mapapp.utilities.Constants.PREF_IS_USER_IN_RANGE;
+import static com.hypergraph.mapapp.utilities.Constants.PREF_USER_PHONE;
 import static com.hypergraph.mapapp.utilities.Constants.SERVICE_BASE_URL;
 import static com.hypergraph.mapapp.utilities.Constants.SERVICE_GET_USER_SOAP_ACTION;
 import static com.hypergraph.mapapp.utilities.Constants.SERVICE_NAMESPACE;
@@ -48,16 +51,19 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private AppDB appDB;
     private boolean hasLocationPermission;
-    public final static int TAG_PERMISSION_CODE = 1;
     private String response;
 
+    private static final int PERMISSION_PHONE_STATE_REQUEST_CODE = 100;
+    public final static int PERMISSION_LOCATION_REQUEST_CODE = 1;
 
+    private MaterialButton enterBtn;
+    private MaterialButton exitBtn;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_mitch);
+        setContentView(R.layout.activity_main);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.gmap);
@@ -68,44 +74,68 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         hasLocationPermission = ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
 
-        if (!hasLocationPermission) {
 
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    TAG_PERMISSION_CODE);
-
+        if (ActivityCompat.checkSelfPermission(this,
+                READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            TelephonyManager tMgr = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+            String mPhoneNumber = tMgr.getLine1Number();
+            Log.i(TAG, "onCreate: TLF" + mPhoneNumber);
+            startLocationService();
+        } else {
+            requestPermission();
         }
 
-        startLocationService();
 
 //        new GetUserCall().execute();
+
+        enterBtn = findViewById(R.id.btnEnter);
+        exitBtn = findViewById(R.id.btnExit);
+
+        setUpButtons();
 
 
     }
 
+    public void setUpButtons() {
+
+        if (appDB.getBoolean(PREF_IS_USER_IN_RANGE)) {
+            enterBtn.setEnabled(true);
+            exitBtn.setEnabled(true);
+        } else {
+            enterBtn.setEnabled(false);
+            exitBtn.setEnabled(false);
+        }
+
+    }
+
+
     private void startLocationService() {
+        Log.i(TAG, "startLocationService: " + isLocationServiceRunning());
         if (!isLocationServiceRunning()) {
             Intent serviceIntent = new Intent(this, LocationService.class);
-            // this.startService(serviceIntent);
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
 
                 MainActivity.this.startForegroundService(serviceIntent);
-                Log.i(TAG, "startLocationService: STARTED O");
+                Log.i(TAG, "startLocationService: STARTED OREO and above");
 
             } else {
 
                 startService(serviceIntent);
-                Log.i(TAG, "startLocationService: STARTED < O");
+                Log.i(TAG, "startLocationService: STARTED < LOWER THAN OREO");
 
             }
         }
     }
 
     private boolean isLocationServiceRunning() {
+
+        Log.i(TAG, "isLocationServiceRunning: START");
         ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
 
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+
+            Log.i(TAG, "isLocationServiceRunning: SERVICE: " + service.service.getClassName());
 
             if (LocationService.TAG.equals(service.service.getClassName())) {
 
@@ -149,6 +179,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         protected String doInBackground(String... strings) {
+            Log.i(TAG, "doInBackground: RUN");
             SoapObject req = new SoapObject(SERVICE_NAMESPACE, GET_USER_METHOD_NAME);
             req.addProperty(SERVICE_PASSWORD_KEY, SERVICE_PASSWORD);
             req.addProperty(SERVICE_PHONE_KEY, TEST_PHONE_NO);
@@ -162,16 +193,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
                 Log.i(TAG, "doInBackground: RESPONSE RUN");
                 transportSE.call(SERVICE_GET_USER_SOAP_ACTION, envelope);
-                response = (String) envelope.getResponse();
+                SoapPrimitive xml = (SoapPrimitive) envelope.getResponse();
+                Log.i(TAG, "doInBackground: XML" + xml.toString());
+                response = "sasa";
 
-
-            } catch (SocketTimeoutException e) {
-                Log.e(TAG, "timeout", e);
-                e.printStackTrace();
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            } catch (IOException f) {
-                f.printStackTrace();
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -190,11 +215,83 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        LocationService.isAppStartable = false;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocationService.isAppStartable = true;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        LocationService.isAppStartable = true;
+
+    }
+
+
 
     @Override
     public void onBackPressed() {
 
         if (!appDB.getBoolean(PREF_IS_USER_IN_RANGE)) super.onBackPressed();
+    }
+
+    /**
+     * *******************************************************************************
+     * *******************************************************************************
+     * *******************************************************************************
+     * *******************************************************************************
+     * *******************************************************************************
+     */
+
+
+    private void requestPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(new String[]{READ_PHONE_STATE}, PERMISSION_PHONE_STATE_REQUEST_CODE);
+        }
+    }
+
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+
+        switch (requestCode) {
+
+            case PERMISSION_LOCATION_REQUEST_CODE:
+                startLocationService();
+                break;
+
+            case PERMISSION_PHONE_STATE_REQUEST_CODE:
+
+                TelephonyManager tMgr = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) !=
+                        PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this,
+                        Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED &&
+                        ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                String mPhoneNumber = tMgr.getLine1Number();
+                Log.i(TAG, "onRequestPermissionsResult: TLF: " + mPhoneNumber);
+
+                appDB.putString(PREF_USER_PHONE, mPhoneNumber);
+
+
+                // After asking for phone number now ask for location permission
+                if (!hasLocationPermission) {
+
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                            PERMISSION_LOCATION_REQUEST_CODE);
+
+                }
+                break;
+
+        }
     }
 
 

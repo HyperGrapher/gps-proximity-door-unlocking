@@ -33,13 +33,13 @@ import static com.hypergraph.mapapp.utilities.Constants.PREF_IS_USER_IN_RANGE;
 public class LocationService extends Service {
 
     public static final String TAG = LocationService.class.getSimpleName();
-    ;
 
     private FusedLocationProviderClient mFusedLocationClient;
     private final static long UPDATE_INTERVAL = 4 * 1000;  /* 4 secs */
     private final static long FASTEST_INTERVAL = 2000; /* 2 sec */
 
     private AppDB appDB;
+    public static boolean isAppStartable;
 
 
     @Nullable
@@ -65,7 +65,7 @@ public class LocationService extends Service {
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
 
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("")
+                    .setContentTitle("HELLOW")
                     .setContentText("").build();
 
             startForeground(1, notification);
@@ -121,15 +121,22 @@ public class LocationService extends Service {
 
                             } else {
 
-
                                 appDB.putBoolean(PREF_IS_USER_IN_RANGE, true);
                                 Toast.makeText(getBaseContext(), "INSIDE", Toast.LENGTH_SHORT).show();
 
-                                Log.i(TAG, "onLocationResult: INSIDE RADIUS");
+                                // eğer uygulama kapatılırsa veya bg'ye giderse mainActivity'den bu değer true yapılacak.
+                                // appDB kullanılabilir. veya static variable yapılabilir
 
-                                Intent in = new Intent(LocationService.this, MainActivity.class);
-                                in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(in);
+                                if (isAppStartable) {
+
+                                    isAppStartable = false;
+
+                                    Log.i(TAG, "onLocationResult: INSIDE And startable");
+
+                                    Intent in = new Intent(LocationService.this, MainActivity.class);
+                                    in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    startActivity(in);
+                                }
 
 
                             }

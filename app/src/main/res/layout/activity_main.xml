@@ -14,22 +14,25 @@
 
 
         <RelativeLayout
-            android:id="@+id/map_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="50">
 
             <ProgressBar
-                android:id="@+id/progressBar"
+                android:id="@+id/progressBar2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:visibility="visible" />
+                android:visibility="gone" />
 
-            <com.google.android.gms.maps.MapView
-                android:id="@+id/map"
+            <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="match_parent"
+                android:id="@+id/gmap"
+                tools:context=".MapsActivity"
+                android:name="com.google.android.gms.maps.SupportMapFragment" />
+
         </RelativeLayout>
 
 
